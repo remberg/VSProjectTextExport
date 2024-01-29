@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VSProjectTextExport.MainPage"
+             Title="VSProjectTextExport">
+
+        <Grid>
+            <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+      
+        <ScrollView Grid.Row="0" BackgroundColor="#494949">
+            <Label x:Name="PathLabel" 
+            Text="Visual Studio Text Export"
+            VerticalOptions="Center" 
+            HorizontalOptions="Center" />
+        </ScrollView>
+        <HorizontalStackLayout HorizontalOptions="Center" Grid.Row="1">
+            <Button Margin="0,10,5,0" Text="Select VS Project (.sln)" Clicked="OnPickFolderClicked"/>
+            <Button Margin="0,10,0,0" Text="Create Report" x:Name="createReportButton"   Clicked="OnCreateReportClicked"/>
+    </HorizontalStackLayout>
+        <Label Margin="10"  Grid.Row="2" x:Name="OutputPathLabel"
+  HorizontalOptions="Center" />
+        <Button Grid.Row="3" Margin="10,0,10,10" HorizontalOptions="Center"  Text="Open text file" x:Name="openTextFileButton" Clicked="OnOpenTextFileClicked" IsVisible="False"/>
+      </Grid>
+</ContentPage>
