@@ -1,29 +1,128 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VSProjectTextExport.MainPage"
              Title="VSProjectTextExport">
-
-        <Grid>
-            <Grid.RowDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-      
-        <ScrollView Grid.Row="0" BackgroundColor="#494949">
-            <Label x:Name="PathLabel" 
-            Text="Visual Studio Text Export"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
+        <ScrollView Grid.Row="0"
+                    BackgroundColor="#494949">
+            <Label x:Name="PathLabel"
+                   Text="Visual Studio Text Export"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"/>
         </ScrollView>
-        <HorizontalStackLayout HorizontalOptions="Center" Grid.Row="1">
-            <Button Margin="0,10,5,0" Text="Select VS Project (.sln)" Clicked="OnPickFolderClicked"/>
-            <Button Margin="0,10,0,0" Text="Create Report" x:Name="createReportButton"   Clicked="OnCreateReportClicked"/>
-    </HorizontalStackLayout>
-        <Label Margin="10"  Grid.Row="2" x:Name="OutputPathLabel"
-  HorizontalOptions="Center" />
-        <Button Grid.Row="3" Margin="10,0,10,10" HorizontalOptions="Center"  Text="Open text file" x:Name="openTextFileButton" Clicked="OnOpenTextFileClicked" IsVisible="False"/>
-      </Grid>
+        <HorizontalStackLayout HorizontalOptions="Center"
+                               Grid.Row="2">
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="csCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="cs"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="xamlCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="xaml"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="slnCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="sln"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="csprojCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="csproj"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="resxCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="resx"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="jsonCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="json"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox x:Name="cssCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="css"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="htmlCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="html"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="razorCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="razor"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox IsChecked="True"
+                          x:Name="cshtmlCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="cshtml"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <CheckBox x:Name="jsCheckBox"/>
+                <Label Margin="-10,0,10,0"
+                       Text="js"
+                       VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <Button Margin="20,10,5,0"
+                    Text="Select VS Project (.sln)"
+                    Clicked="OnPickFolderClicked"/>
+            <Button Margin="0,10,0,0"
+                    Text="Create Report"
+                    x:Name="createReportButton"
+                    Clicked="OnCreateReportClicked"/>
+        </HorizontalStackLayout>
+        <HorizontalStackLayout HorizontalOptions="Center"
+                               Grid.Row="3">
+            <Label Margin="10"
+                   Grid.Row="3"
+                   x:Name="OutputPathLabel"
+                   HorizontalOptions="Center"/>
+            <Button Grid.Row="4"
+                    Margin="10,0,10,10"
+                    HorizontalOptions="Center"
+                    Text="Open text file"
+                    x:Name="openTextFileButton"
+                    Clicked="OnOpenTextFileClicked"
+                    IsVisible="False"/>
+            <Button Grid.Row="5"
+                    Margin="10,0,10,10"
+                    HorizontalOptions="Center"
+                    Text="Open folder"
+                    x:Name="openFolderButton"
+                    Clicked="OnOpenFolderClicked"
+                    IsVisible="False"/>
+        </HorizontalStackLayout>
+    </Grid>
 </ContentPage>
