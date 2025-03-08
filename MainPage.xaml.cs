@@ -226,13 +226,29 @@ namespace VSProjectTextExport
                 string outputPath;
                 if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
                 {
-                    // On macOS, save to the user's Documents directory
-                    string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                    outputPath = Path.Combine(documentsPath, firstRelativeFolder + ".txt");
+                    // On macOS, first try to save in the project directory
+                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + ".txt");
                     
-                    // Inform the user
-                    await DisplayAlert("Information", 
-                        $"Due to macOS permissions, the output file will be saved in the Documents folder: {outputPath}", "OK");
+                    try
+                    {
+                        // Test if we can write to this location
+                        using (var testWrite = File.Create(outputPath))
+                        {
+                            // File could be created, close it
+                        }
+                        // Delete the test file
+                        File.Delete(outputPath);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Fall back to Documents folder if we can't write to the project directory
+                        string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                        outputPath = Path.Combine(documentsPath, firstRelativeFolder + ".txt");
+                        
+                        // Inform the user
+                        await DisplayAlert("Information", 
+                            $"Due to macOS permissions, the output file will be saved in the Documents folder: {outputPath}", "OK");
+                    }
                 }
                 else
                 {
