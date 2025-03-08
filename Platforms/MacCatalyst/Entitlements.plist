@@ -9,6 +9,30 @@
         <!-- When App Sandbox is enabled, this value is required to open outgoing network connections. -->
         <key>com.apple.security.network.client</key>
         <true/>
+        
+        <!-- File access permissions -->
+        <key>com.apple.security.files.user-selected.read-only</key>
+        <true/>
+        <key>com.apple.security.files.user-selected.read-write</key>
+        <true/>
+        
+        <!-- Temporarily disable app sandbox for development -->
+        <key>com.apple.security.app-sandbox</key>
+        <false/>
+        
+        <!-- Add full disk access -->
+        <key>com.apple.security.files.all</key>
+        <true/>
+        
+        <!-- Allow to read/write files on removable volumes -->
+        <key>com.apple.security.files.bookmarks.app-scope</key>
+        <true/>
+        
+        <!-- Allow to read/write files in user selected folders -->
+        <key>com.apple.security.files.downloads.read-write</key>
+        <true/>
+        <key>com.apple.security.files.user-selected.executable</key>
+        <true/>
     </dict>
 </plist>
 

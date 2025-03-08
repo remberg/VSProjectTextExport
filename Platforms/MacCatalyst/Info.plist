@@ -11,6 +11,24 @@
     <!-- Please consult https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype -->
     <!-- <key>LSApplicationCategoryType</key> -->
     <!-- <string>public.app-category.YOUR-CATEGORY-HERE</string> -->
+    
+    <!-- File type declarations -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Solution Files</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+                <string>public.text</string>
+            </array>
+        </dict>
+    </array>
+    
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>2</integer>
@@ -34,5 +52,10 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+    
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Diese App benötigt Zugriff auf die Dokumente, um Lösungsdateien zu öffnen und Projekte zu analysieren.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Diese App benötigt Zugriff auf den Downloads-Ordner, um Lösungsdateien zu öffnen.</string>
 </dict>
 </plist>

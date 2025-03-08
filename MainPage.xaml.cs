@@ -14,70 +14,193 @@ namespace VSProjectTextExport
         }
         private string ListAllFilesAndDirectories(string spath)
         {
-            string rootPath = spath;
-            var header = "***********************************" + Environment.NewLine;
-            var firstRelativeFolder = new DirectoryInfo(rootPath).Name;
-            var allFileTypes = GetSelectedFileTypes();
-            var fileListing = new List<string>();
-            // Add the root folder to the listing 
-            fileListing.Add(firstRelativeFolder);
-            var allDirectories = Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories)
-                            .Where(dir => !dir.Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith(".") || part.Equals("bin") || part.Equals("obj") || part.Equals("Platforms") || part.Equals("Resources"))).OrderBy(dir => dir);
-
-            //Process each file and folder        
-            foreach (var dir in allDirectories)
+            try
             {
-                var relativeDirPath = Path.GetRelativePath(rootPath, dir);
-                fileListing.Add("└──Directory: " + relativeDirPath);
-                // Collect all files in the current directory 
-                var allFilesInDir = allFileTypes.SelectMany(ext => Directory.EnumerateFiles(dir, ext, SearchOption.TopDirectoryOnly)).Select(file => Path.GetFileName(file))
-                  // Extract the file names  
-                  .OrderBy(fileName => fileName);
-                // Sort the file names  
-                // Add the sorted file names to the list  
-                foreach (var fileName in allFilesInDir)
+                string rootPath = spath;
+                var header = "***********************************" + Environment.NewLine;
+                var firstRelativeFolder = new DirectoryInfo(rootPath).Name;
+                var allFileTypes = GetSelectedFileTypes();
+                var fileListing = new List<string>();
+                // Add the root folder to the listing 
+                fileListing.Add(firstRelativeFolder);
+                
+                try
                 {
-                    fileListing.Add("     └──File: " + fileName);
-                }
+                    var allDirectories = Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories)
+                                    .Where(dir => {
+                                        try {
+                                            return !dir.Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith(".") || part.Equals("bin") || part.Equals("obj") || part.Equals("Platforms") || part.Equals("Resources"));
+                                        } catch {
+                                            // Skip this directory if there's an error in filtering
+                                            return false;
+                                        }
+                                    })
+                                    .Where(dir => {
+                                        try {
+                                            // Check if we actually have access to the directory
+                                            var _ = Directory.GetFiles(dir);
+                                            return true;
+                                        } catch {
+                                            return false;
+                                        }
+                                    })
+                                    .OrderBy(dir => dir);
 
+                    //Process each file and folder        
+                    foreach (var dir in allDirectories)
+                    {
+                        try
+                        {
+                            var relativeDirPath = Path.GetRelativePath(rootPath, dir);
+                            fileListing.Add("└──Directory: " + relativeDirPath);
+                            
+                            // Collect all files in the current directory 
+                            List<string> files = new List<string>();
+                            foreach (var ext in allFileTypes)
+                            {
+                                try
+                                {
+                                    files.AddRange(Directory.EnumerateFiles(dir, ext, SearchOption.TopDirectoryOnly));
+                                }
+                                catch (UnauthorizedAccessException)
+                                {
+                                    // Access denied, skip this file type
+                                    continue;
+                                }
+                            }
+                            
+                            var allFilesInDir = files.Select(file => Path.GetFileName(file))
+                                .OrderBy(fileName => fileName);
+                            
+                            // Add the sorted file names to the list  
+                            foreach (var fileName in allFilesInDir)
+                            {
+                                fileListing.Add("     └──File: " + fileName);
+                            }
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // Access to directory denied, skip and continue
+                            continue;
+                        }
+                        catch (Exception)
+                        {
+                            // Skip other errors
+                            continue;
+                        }
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    fileListing.Add("No permission to access subdirectories.");
+                }
+                
+                // Collect all files in the root directory with error handling  
+                try
+                {
+                    List<string> rootFiles = new List<string>();
+                    foreach (var ext in allFileTypes)
+                    {
+                        try
+                        {
+                            rootFiles.AddRange(Directory.EnumerateFiles(rootPath, ext, SearchOption.TopDirectoryOnly));
+                        }
+                        catch
+                        {
+                            // Ignore file access errors
+                        }
+                    }
+                    
+                    var allFilesInRoot = rootFiles.Select(file => Path.GetFileName(file))
+                        .OrderBy(fileName => fileName);
+                    
+                    // Add the sorted file names to the list 
+                    foreach (var fileName in allFilesInRoot)
+                    {
+                        fileListing.Add("File: " + fileName);
+                    }
+                }
+                catch (Exception)
+                {
+                    fileListing.Add("Error accessing files in the main directory.");
+                }
+                
+                var resultContent = new List<string>();
+                foreach (var file in fileListing)
+                {
+                    resultContent.Add(file);
+                }
+                var filesListingString = "Files and Folders in Project " + firstRelativeFolder + ":" + Environment.NewLine + string.Join(Environment.NewLine, resultContent) + Environment.NewLine + Environment.NewLine;
+                var singleStr = filesListingString;
+                Console.WriteLine(singleStr); 
+                return singleStr;
             }
-            // Collect all files in the root directory   
-            var allFilesInRoot = allFileTypes.SelectMany(ext => Directory.EnumerateFiles(rootPath, ext, SearchOption.TopDirectoryOnly)).Select(file => Path.GetFileName(file))
-                      // Extract the file names 
-                      .OrderBy(fileName => fileName);
-            // Sort the file names 
-            // Add the sorted file names to the list 
-            foreach (var fileName in allFilesInRoot)
+            catch (Exception ex)
             {
-                fileListing.Add("File: " + fileName);
+                return $"Error listing files and folders: {ex.Message}";
             }
-            var resultContent = new List<string>(); foreach (var file in fileListing)
-            {
-                resultContent.Add(file);
-            }
-            var filesListingString = "Files and Folders in Project " + firstRelativeFolder + ":" + Environment.NewLine + string.Join(Environment.NewLine, resultContent) + Environment.NewLine + Environment.NewLine;
-            var singleStr = filesListingString;
-            Console.WriteLine(singleStr); return singleStr;
         }
         private async void OnPickFileClicked(object sender, EventArgs e)
         {
             try
             {
-                var pickOptions = new PickOptions
+                FileResult result = null;
+                
+                // Simplify the macOS implementation with fewer special options
+                if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
                 {
-                    PickerTitle = "Please choose a .sln file",
-                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                     {
-                        { DevicePlatform.iOS, new[] { "sln" } },
-                         { DevicePlatform.Android, new[] { "sln" } },
-                          { DevicePlatform.WinUI, new[] { ".sln" } },
-                           { DevicePlatform.MacCatalyst, new[] { "sln" } },
-                            { DevicePlatform.macOS, new[] { "sln" } }, })
-                };
-                var result = await FilePicker.PickAsync(pickOptions);
+                    try
+                    {
+                        // Use simple FilePicker without options
+                        result = await FilePicker.PickAsync();
+                    }
+                    catch (Exception pickerEx)
+                    {
+                        // Show detailed error message for macOS
+                        await DisplayAlert("FilePicker Error", 
+                            $"Details: {pickerEx.Message}\n\n" +
+                            $"StackTrace: {pickerEx.StackTrace}", "OK");
+                        return;
+                    }
+                }
+                else
+                {
+                    // For other platforms, use the usual filters
+                    var pickOptions = new PickOptions
+                    {
+                        PickerTitle = "Please choose a .sln file",
+                        FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                        {
+                            { DevicePlatform.iOS, new[] { "public.text" } },
+                            { DevicePlatform.Android, new[] { "application/octet-stream" } },
+                            { DevicePlatform.WinUI, new[] { ".sln" } }
+                        })
+                    };
+                    
+                    result = await FilePicker.Default.PickAsync(pickOptions);
+                }
+
                 if (result != null)
                 {
-                    _selectedPath = Path.GetDirectoryName(result.FullPath) ?? string.Empty; PathLabel.Text = ListAllFilesAndDirectories(_selectedPath); createReportButton.IsEnabled = true;
+                    // Verify the picked file is a .sln file
+                    if (Path.GetExtension(result.FullPath).ToLowerInvariant() != ".sln")
+                    {
+                        await DisplayAlert("Invalid File", "Please select a .sln file.", "OK");
+                        return;
+                    }
+
+                    // Use Path.GetDirectoryName properly
+                    _selectedPath = Path.GetDirectoryName(result.FullPath) ?? string.Empty;
+                    
+                    // Check if we got a valid path
+                    if (string.IsNullOrEmpty(_selectedPath))
+                    {
+                        await DisplayAlert("Error", "Could not determine directory path.", "OK");
+                        return;
+                    }
+                    
+                    PathLabel.Text = ListAllFilesAndDirectories(_selectedPath);
+                    createReportButton.IsEnabled = true;
                 }
             }
             catch (Exception ex)
@@ -87,67 +210,249 @@ namespace VSProjectTextExport
         }
         private async void OnCreateReportClicked(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(_selectedPath)) { await DisplayAlert("Error", "Please choose a folder first.", "OK"); return; }
+            if (string.IsNullOrWhiteSpace(_selectedPath))
+            { 
+                await DisplayAlert("Error", "Please choose a folder first.", "OK"); 
+                return; 
+            }
+            
             try
             {
                 var header = "**********************************************************************" + Environment.NewLine;
                 // Determine the name of the first relative folder for the output file  
                 var firstRelativeFolder = new DirectoryInfo(_selectedPath).Name;
-                string outputPath = Path.Combine(_selectedPath + @"\" + firstRelativeFolder + ".txt");
-                var allFileTypes = GetSelectedFileTypes();
-                // Get all directories except those that start with '.', as well as 'bin' and 'obj' folders     
-                var allDirectories = Directory.EnumerateDirectories(_selectedPath, "*", SearchOption.AllDirectories).Where(dir => !dir.Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith(".") || part.Equals("bin") || part.Equals("obj") || part.Equals("Platforms") || part.Equals("Resources"))).OrderBy(dir => dir);
-                // Search all permissible directories for the specified file types     
-                var filesInDirectories = allDirectories.SelectMany(dir => allFileTypes.SelectMany(ext => Directory.EnumerateFiles(dir, ext, SearchOption.TopDirectoryOnly))).OrderBy(dir => dir);
-                // Capture specific files in the root directory in the desired order  
-                var slnFilesInRoot = Directory.EnumerateFiles(_selectedPath, "*.sln", SearchOption.TopDirectoryOnly);
-                var csprojFilesInRoot = Directory.EnumerateFiles(_selectedPath, "*.csproj", SearchOption.TopDirectoryOnly);
-                var otherFilesInRoot = allFileTypes.Where(ext => ext != "*.sln" && ext != "*.csproj").SelectMany(ext => Directory.EnumerateFiles(_selectedPath, ext, SearchOption.TopDirectoryOnly)).OrderBy(dir => dir);
-                // Combine the files from the root directory in the specific order   
-                var filesInRoot = slnFilesInRoot.Concat(csprojFilesInRoot).Concat(otherFilesInRoot);
-                // Combine the files from the subdirectories and the root directory     
-                var allFiles = filesInRoot.Concat(filesInDirectories);
-                var resultContent = allFiles.Select(path => new
+                
+                // Choose a location that has guaranteed write permissions
+                string outputPath;
+                if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
                 {
-                    Name = Path.GetFileName(path),
-                    RelativePath = Path.GetRelativePath(_selectedPath, path),
-                    Contents = File.ReadAllText(path)
-                }).Select(info => header + "Filename: " + info.Name + Environment.NewLine + "Relative Path: " + firstRelativeFolder + "\\" + info.RelativePath + Environment.NewLine + header + info.Contents);
-                var singleStr = ListAllFilesAndDirectories(_selectedPath);
-                singleStr += string.Join(Environment.NewLine, resultContent);
-                Console.WriteLine(singleStr);
-                File.WriteAllText(outputPath, singleStr, Encoding.UTF8);
+                    // On macOS, save to the user's Documents directory
+                    string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    outputPath = Path.Combine(documentsPath, firstRelativeFolder + ".txt");
+                    
+                    // Inform the user
+                    await DisplayAlert("Information", 
+                        $"Due to macOS permissions, the output file will be saved in the Documents folder: {outputPath}", "OK");
+                }
+                else
+                {
+                    // For other platforms, save in the project directory
+                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + ".txt");
+                }
+                
+                var allFileTypes = GetSelectedFileTypes();
+                
+                List<string> accessibleDirectories = new List<string>();
+                List<string> allFiles = new List<string>();
+                
+                try
+                {
+                    // Careful handling of directory listing
+                    var allDirectories = Directory.EnumerateDirectories(_selectedPath, "*", SearchOption.AllDirectories)
+                        .Where(dir => {
+                            try {
+                                // Filter directories
+                                bool shouldInclude = !dir.Split(Path.DirectorySeparatorChar)
+                                    .Any(part => part.StartsWith(".") || part.Equals("bin") || part.Equals("obj") || 
+                                        part.Equals("Platforms") || part.Equals("Resources"));
+                                
+                                // Check access
+                                if (shouldInclude)
+                                {
+                                    Directory.GetFiles(dir, "*.*", SearchOption.TopDirectoryOnly);
+                                }
+                                
+                                return shouldInclude;
+                            }
+                            catch {
+                                // Skip on errors
+                                return false;
+                            }
+                        })
+                        .OrderBy(dir => dir);
+                        
+                    accessibleDirectories = allDirectories.ToList();
+                        
+                    // Collect files from the root directory
+                    try
+                    {
+                        var slnFilesInRoot = SafeEnumerateFiles(_selectedPath, "*.sln");
+                        var csprojFilesInRoot = SafeEnumerateFiles(_selectedPath, "*.csproj");
+                        
+                        List<string> otherFilesInRoot = new List<string>();
+                        foreach (var ext in allFileTypes.Where(ext => ext != "*.sln" && ext != "*.csproj"))
+                        {
+                            try
+                            {
+                                otherFilesInRoot.AddRange(Directory.EnumerateFiles(_selectedPath, ext, SearchOption.TopDirectoryOnly));
+                            }
+                            catch { /* Ignore and continue */ }
+                        }
+                        
+                        allFiles.AddRange(slnFilesInRoot);
+                        allFiles.AddRange(csprojFilesInRoot);
+                        allFiles.AddRange(otherFilesInRoot.OrderBy(f => f));
+                    }
+                    catch (Exception ex)
+                    {
+                        await DisplayAlert("Warning", $"Problems accessing the root directory: {ex.Message}", "OK");
+                    }
+                    
+                    // Collect files from subdirectories
+                    foreach (var dir in accessibleDirectories)
+                    {
+                        foreach (var ext in allFileTypes)
+                        {
+                            try
+                            {
+                                var files = Directory.EnumerateFiles(dir, ext, SearchOption.TopDirectoryOnly);
+                                allFiles.AddRange(files);
+                            }
+                            catch { /* Ignore and continue */ }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert("Warning", $"Problem searching directories: {ex.Message}", "OK");
+                }
+                
+                // Create report with the files we can access
+                var contentResults = new List<string>();
+                var failedFiles = new List<string>();
+                
+                foreach (var filePath in allFiles)
+                {
+                    try
+                    {
+                        var fileName = Path.GetFileName(filePath);
+                        var relativePath = Path.GetRelativePath(_selectedPath, filePath);
+                        string contents = File.ReadAllText(filePath);
+                        
+                        contentResults.Add(
+                            header + 
+                            "Filename: " + fileName + Environment.NewLine + 
+                            "Relative Path: " + firstRelativeFolder + Path.DirectorySeparatorChar + relativePath + 
+                            Environment.NewLine + header + contents
+                        );
+                    }
+                    catch
+                    {
+                        failedFiles.Add(filePath);
+                    }
+                }
+                
+                // Combine everything
+                var directorySummary = ListAllFilesAndDirectories(_selectedPath);
+                var fileContents = string.Join(Environment.NewLine, contentResults);
+                var finalContent = directorySummary + fileContents;
+                
+                if (failedFiles.Any())
+                {
+                    finalContent += Environment.NewLine + Environment.NewLine +
+                        "The following files could not be read due to permission issues:" + 
+                        Environment.NewLine +
+                        string.Join(Environment.NewLine, failedFiles.Select(f => "- " + f));
+                }
+                
+                // Save the file
+                File.WriteAllText(outputPath, finalContent, Encoding.UTF8);
+                
                 OutputPathLabel.Text = outputPath;
                 _outputFilePath = outputPath;
-                openTextFileButton.IsVisible = true; openFolderButton.IsVisible = true;
+                
+                openTextFileButton.IsVisible = true;
+                openFolderButton.IsVisible = true;
+
             }
-            catch (Exception ex) { await DisplayAlert("Error", $"An error has occurred: {ex.Message}", "OK"); }
+            catch (Exception ex) 
+            { 
+                await DisplayAlert("Error", $"An error has occurred: {ex.Message}", "OK"); 
+            }
         }
+
+        // Helper method for safe file access
+        private IEnumerable<string> SafeEnumerateFiles(string path, string searchPattern)
+        {
+            try
+            {
+                return Directory.EnumerateFiles(path, searchPattern, SearchOption.TopDirectoryOnly);
+            }
+            catch
+            {
+                return Enumerable.Empty<string>();
+            }
+        }
+
         private async void OnOpenTextFileClicked(object sender, EventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(_outputFilePath) && File.Exists(_outputFilePath))
             {
-                await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(_outputFilePath) });
+                try
+                {
+                    if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
+                    {
+                        // On macOS we use the special file:// prefix
+                        string macOsPath = "file://" + _outputFilePath;
+                        await Launcher.Default.OpenAsync(new Uri(macOsPath));
+                    }
+                    else
+                    {
+                        // Standard method for other platforms
+                        await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(_outputFilePath) });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert("Error opening file", 
+                        $"The file could not be opened: {ex.Message}", "OK");
+                }
             }
             else
             {
                 await DisplayAlert("Error", "File not found.", "OK");
             }
         }
+
         private async void OnOpenFolderClicked(object sender, EventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(_selectedPath) && Directory.Exists(_selectedPath))
             {
-                await Launcher.Default.OpenAsync(new Uri(_selectedPath));
+                try
+                {
+                    if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
+                    {
+                        // On macOS we use the special file:// prefix with trailing slash
+                        string macOsPath = "file://" + _selectedPath;
+                        // Make sure the path ends with a slash
+                        if (!macOsPath.EndsWith("/"))
+                            macOsPath += "/";
+                        
+                        await Launcher.Default.OpenAsync(new Uri(macOsPath));
+                    }
+                    else
+                    {
+                        // Standard method for other platforms
+                        await Launcher.Default.OpenAsync(new Uri(_selectedPath));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert("Error opening folder", 
+                        $"The folder could not be opened: {ex.Message}", "OK");
+                }
             }
             else
             {
                 await DisplayAlert("Error", "Folder not found.", "OK");
             }
         }
+
         private IEnumerable<string> GetSelectedFileTypes()
         {
-            var selectedFileTypes = new List<string>(); if (csCheckBox.IsChecked) selectedFileTypes.Add("*.cs"); if (xamlCheckBox.IsChecked) selectedFileTypes.Add("*.xaml");
+            var selectedFileTypes = new List<string>(); 
+            if (csCheckBox.IsChecked) selectedFileTypes.Add("*.cs"); 
+            if (xamlCheckBox.IsChecked) selectedFileTypes.Add("*.xaml");
             if (slnCheckBox.IsChecked) selectedFileTypes.Add("*.sln");
             if (csprojCheckBox.IsChecked) selectedFileTypes.Add("*.csproj");
             if (resxCheckBox.IsChecked) selectedFileTypes.Add("*.resx");
