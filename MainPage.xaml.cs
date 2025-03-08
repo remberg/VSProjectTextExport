@@ -59,7 +59,7 @@ namespace VSProjectTextExport
             var singleStr = filesListingString;
             Console.WriteLine(singleStr); return singleStr;
         }
-        private async void OnPickFolderClicked(object sender, EventArgs e)
+        private async void OnPickFileClicked(object sender, EventArgs e)
         {
             try
             {
