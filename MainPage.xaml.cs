@@ -12,17 +12,30 @@ namespace VSProjectTextExport
             openTextFileButton.IsVisible = false;
             openFolderButton.IsVisible = false;
         }
-        private string ListAllFilesAndDirectories(string spath)
+        private string ListAllFilesAndDirectories(string spath, bool isMarkdownFormat)
         {
             try
             {
                 string rootPath = spath;
-                var header = "***********************************" + Environment.NewLine;
+                string header;
                 var firstRelativeFolder = new DirectoryInfo(rootPath).Name;
                 var allFileTypes = GetSelectedFileTypes();
                 var fileListing = new List<string>();
-                // Add the root folder to the listing 
-                fileListing.Add(firstRelativeFolder);
+                
+                if (isMarkdownFormat)
+                {
+                    // Markdown format
+                    header = "# Project Structure" + Environment.NewLine + Environment.NewLine;
+                    // Add the root folder to the listing 
+                    fileListing.Add("## " + firstRelativeFolder);
+                }
+                else
+                {
+                    // Plain text format
+                    header = "PROJECT STRUCTURE:" + Environment.NewLine + Environment.NewLine;
+                    // Add the root folder to the listing 
+                    fileListing.Add(firstRelativeFolder);
+                }
                 
                 try
                 {
@@ -52,7 +65,15 @@ namespace VSProjectTextExport
                         try
                         {
                             var relativeDirPath = Path.GetRelativePath(rootPath, dir);
-                            fileListing.Add("└──Directory: " + relativeDirPath);
+                            
+                            if (isMarkdownFormat)
+                            {
+                                fileListing.Add("### Directory: " + relativeDirPath);
+                            }
+                            else
+                            {
+                                fileListing.Add("Directory: " + relativeDirPath);
+                            }
                             
                             // Collect all files in the current directory 
                             List<string> files = new List<string>();
@@ -75,7 +96,14 @@ namespace VSProjectTextExport
                             // Add the sorted file names to the list  
                             foreach (var fileName in allFilesInDir)
                             {
-                                fileListing.Add("     └──File: " + fileName);
+                                if (isMarkdownFormat)
+                                {
+                                    fileListing.Add("- " + fileName);
+                                }
+                                else
+                                {
+                                    fileListing.Add("  " + fileName);
+                                }
                             }
                         }
                         catch (UnauthorizedAccessException)
@@ -92,7 +120,14 @@ namespace VSProjectTextExport
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    fileListing.Add("No permission to access subdirectories.");
+                    if (isMarkdownFormat)
+                    {
+                        fileListing.Add("*No permission to access subdirectories.*");
+                    }
+                    else
+                    {
+                        fileListing.Add("No permission to access subdirectories.");
+                    }
                 }
                 
                 // Collect all files in the root directory with error handling  
@@ -117,12 +152,26 @@ namespace VSProjectTextExport
                     // Add the sorted file names to the list 
                     foreach (var fileName in allFilesInRoot)
                     {
-                        fileListing.Add("File: " + fileName);
+                        if (isMarkdownFormat)
+                        {
+                            fileListing.Add("- " + fileName);
+                        }
+                        else
+                        {
+                            fileListing.Add("  " + fileName);
+                        }
                     }
                 }
                 catch (Exception)
                 {
-                    fileListing.Add("Error accessing files in the main directory.");
+                    if (isMarkdownFormat)
+                    {
+                        fileListing.Add("*Error accessing files in the main directory.*");
+                    }
+                    else
+                    {
+                        fileListing.Add("Error accessing files in the main directory.");
+                    }
                 }
                 
                 var resultContent = new List<string>();
@@ -130,21 +179,28 @@ namespace VSProjectTextExport
                 {
                     resultContent.Add(file);
                 }
-                var filesListingString = "Files and Folders in Project " + firstRelativeFolder + ":" + Environment.NewLine + string.Join(Environment.NewLine, resultContent) + Environment.NewLine + Environment.NewLine;
+                var filesListingString = header + string.Join(Environment.NewLine, resultContent) + Environment.NewLine + Environment.NewLine;
                 var singleStr = filesListingString;
                 Console.WriteLine(singleStr); 
                 return singleStr;
             }
             catch (Exception ex)
             {
-                return $"Error listing files and folders: {ex.Message}";
+                if (isMarkdownFormat)
+                {
+                    return $"## Error\n\nError listing files and folders: {ex.Message}";
+                }
+                else
+                {
+                    return $"ERROR\n\nError listing files and folders: {ex.Message}";
+                }
             }
         }
         private async void OnPickFileClicked(object sender, EventArgs e)
         {
             try
             {
-                FileResult result = null;
+                FileResult? result = null;
                 
                 // Simplify the macOS implementation with fewer special options
                 if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
@@ -199,7 +255,7 @@ namespace VSProjectTextExport
                         return;
                     }
                     
-                    PathLabel.Text = ListAllFilesAndDirectories(_selectedPath);
+                    PathLabel.Text = ListAllFilesAndDirectories(_selectedPath, false);
                     createReportButton.IsEnabled = true;
                 }
             }
@@ -218,16 +274,19 @@ namespace VSProjectTextExport
             
             try
             {
-                var header = "**********************************************************************" + Environment.NewLine;
                 // Determine the name of the first relative folder for the output file  
                 var firstRelativeFolder = new DirectoryInfo(_selectedPath).Name;
+                
+                // Get output format selection
+                bool isMarkdownFormat = markdownRadioButton.IsChecked;
+                string fileExtension = isMarkdownFormat ? ".md" : ".txt";
                 
                 // Choose a location that has guaranteed write permissions
                 string outputPath;
                 if (DeviceInfo.Platform == DevicePlatform.macOS || DeviceInfo.Platform == DevicePlatform.MacCatalyst)
                 {
                     // On macOS, first try to save in the project directory
-                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + ".txt");
+                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + fileExtension);
                     
                     try
                     {
@@ -243,7 +302,7 @@ namespace VSProjectTextExport
                     {
                         // Fall back to Documents folder if we can't write to the project directory
                         string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                        outputPath = Path.Combine(documentsPath, firstRelativeFolder + ".txt");
+                        outputPath = Path.Combine(documentsPath, firstRelativeFolder + fileExtension);
                         
                         // Inform the user
                         await DisplayAlert("Information", 
@@ -253,7 +312,7 @@ namespace VSProjectTextExport
                 else
                 {
                     // For other platforms, save in the project directory
-                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + ".txt");
+                    outputPath = Path.Combine(_selectedPath, firstRelativeFolder + fileExtension);
                 }
                 
                 var allFileTypes = GetSelectedFileTypes();
@@ -345,12 +404,33 @@ namespace VSProjectTextExport
                         var relativePath = Path.GetRelativePath(_selectedPath, filePath);
                         string contents = File.ReadAllText(filePath);
                         
-                        contentResults.Add(
-                            header + 
-                            "Filename: " + fileName + Environment.NewLine + 
-                            "Relative Path: " + firstRelativeFolder + Path.DirectorySeparatorChar + relativePath + 
-                            Environment.NewLine + header + contents
-                        );
+                        if (isMarkdownFormat)
+                        {
+                            // Get language for syntax highlighting based on file extension
+                            string fileExt = Path.GetExtension(filePath).ToLowerInvariant();
+                            string language = DetermineCodeLanguage(fileExt);
+                            
+                            contentResults.Add(
+                                $"## File: {fileName}" + Environment.NewLine + 
+                                $"**Path:** `{firstRelativeFolder}{Path.DirectorySeparatorChar}{relativePath}`" + 
+                                Environment.NewLine + Environment.NewLine + 
+                                $"```{language}" + Environment.NewLine + 
+                                contents + Environment.NewLine + 
+                                "```" + Environment.NewLine + Environment.NewLine
+                            );
+                        }
+                        else
+                        {
+                            // Original text format
+                            contentResults.Add(
+                                $"// File: {fileName}" + Environment.NewLine + 
+                                $"// Path: {firstRelativeFolder}{Path.DirectorySeparatorChar}{relativePath}" + 
+                                Environment.NewLine + Environment.NewLine + 
+                                contents + Environment.NewLine + 
+                                Environment.NewLine + 
+                                "// " + new string('-', 80) + Environment.NewLine
+                            );
+                        }
                     }
                     catch
                     {
@@ -358,17 +438,42 @@ namespace VSProjectTextExport
                     }
                 }
                 
-                // Combine everything
-                var directorySummary = ListAllFilesAndDirectories(_selectedPath);
-                var fileContents = string.Join(Environment.NewLine, contentResults);
-                var finalContent = directorySummary + fileContents;
+                // Combine everything based on format
+                string finalContent;
                 
-                if (failedFiles.Any())
+                if (isMarkdownFormat)
                 {
-                    finalContent += Environment.NewLine + Environment.NewLine +
-                        "The following files could not be read due to permission issues:" + 
-                        Environment.NewLine +
-                        string.Join(Environment.NewLine, failedFiles.Select(f => "- " + f));
+                    var directorySummary = ListAllFilesAndDirectories(_selectedPath, isMarkdownFormat);
+                    var fileContents = string.Join(Environment.NewLine, contentResults);
+                    finalContent = directorySummary + Environment.NewLine + "# File Contents" + Environment.NewLine + Environment.NewLine + fileContents;
+                    
+                    if (failedFiles.Any())
+                    {
+                        finalContent += Environment.NewLine + Environment.NewLine +
+                            "## Files with Access Issues" + Environment.NewLine + Environment.NewLine +
+                            "The following files could not be read due to permission issues:" + 
+                            Environment.NewLine +
+                            string.Join(Environment.NewLine, failedFiles.Select(f => "- " + f));
+                    }
+                }
+                else
+                {
+                    // Original text format
+                    var directorySummary = ListAllFilesAndDirectories(_selectedPath, isMarkdownFormat);
+                    var fileContents = string.Join(Environment.NewLine, contentResults);
+                    finalContent = "PROJECT STRUCTURE:" + Environment.NewLine + Environment.NewLine + 
+                                  directorySummary + Environment.NewLine + 
+                                  "FILE CONTENTS:" + Environment.NewLine + Environment.NewLine + 
+                                  fileContents;
+                    
+                    if (failedFiles.Any())
+                    {
+                        finalContent += Environment.NewLine + Environment.NewLine +
+                            "FILES WITH ACCESS ISSUES:" + Environment.NewLine + Environment.NewLine +
+                            "The following files could not be read due to permission issues:" + 
+                            Environment.NewLine +
+                            string.Join(Environment.NewLine, failedFiles.Select(f => "- " + f));
+                    }
                 }
                 
                 // Save the file
@@ -386,16 +491,37 @@ namespace VSProjectTextExport
                 await DisplayAlert("Error", $"An error has occurred: {ex.Message}", "OK"); 
             }
         }
+        
+        // Helper method to determine the language for syntax highlighting
+        private string DetermineCodeLanguage(string fileExtension)
+        {
+            return fileExtension switch
+            {
+                ".cs" => "csharp",
+                ".xaml" => "xml",
+                ".csproj" => "xml",
+                ".sln" => "plaintext",
+                ".resx" => "xml",
+                ".json" => "json",
+                ".css" => "css",
+                ".html" => "html",
+                ".razor" => "razor",
+                ".cshtml" => "cshtml",
+                ".js" => "javascript",
+                _ => "plaintext"
+            };
+        }
 
-        // Helper method for safe file access
-        private IEnumerable<string> SafeEnumerateFiles(string path, string searchPattern)
+        // Helper method to safely enumerate files with error handling
+        private IEnumerable<string> SafeEnumerateFiles(string directory, string searchPattern)
         {
             try
             {
-                return Directory.EnumerateFiles(path, searchPattern, SearchOption.TopDirectoryOnly);
+                return Directory.EnumerateFiles(directory, searchPattern, SearchOption.TopDirectoryOnly);
             }
-            catch
+            catch (Exception)
             {
+                // Return empty collection on any error
                 return Enumerable.Empty<string>();
             }
         }

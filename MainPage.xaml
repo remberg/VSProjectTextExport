@@ -18,6 +18,32 @@
                    VerticalOptions="Center"
                    HorizontalOptions="Center"/>
         </ScrollView>
+        
+        <!-- Format selection row -->
+        <HorizontalStackLayout Grid.Row="1" 
+                               HorizontalOptions="Center"
+                               Margin="0,10,0,0">
+            <Label Text="Output Format:" 
+                   VerticalOptions="Center" 
+                   Margin="0,0,10,0"/>
+            <HorizontalStackLayout>
+                <RadioButton x:Name="textRadioButton" 
+                             IsChecked="False" 
+                             GroupName="outputFormat"/>
+                <Label Text="Text (.txt)" 
+                       VerticalOptions="Center"
+                       Margin="-5,0,15,0"/>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <RadioButton x:Name="markdownRadioButton" 
+                             IsChecked="True" 
+                             GroupName="outputFormat"/>
+                <Label Text="Markdown (.md)" 
+                       VerticalOptions="Center"
+                       Margin="-5,0,0,0"/>
+            </HorizontalStackLayout>
+        </HorizontalStackLayout>
+        
         <HorizontalStackLayout HorizontalOptions="Center"
                                Grid.Row="2">
             <HorizontalStackLayout>
